@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Algoritmo</title>
+        <style>
+            .container {
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+            }
+            .grid {
+                display: grid;
+                grid-template-columns: repeat(10, 30px);
+            }
+            .cell {
+                width: 30px;
+                height: 30px;
+                border: 1px solid #ccc;
+                box-sizing: border-box;
+                background-color: white;
+            }
+            .start {
+                background-color: green;
+            }
+            .end {
+                background-color: red;
+            }
+            .obstacle {
+                background-color: black;
+            }
+            .path {
+                background-color: yellow;
+            }
+        </style>
+    </head>
+
+<!------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+
+<body>
+    <div class="container">
+<div class="grid" id="grid"></div>
+    </div>
+    
+    <script>
+        // Nodos
+        function Node(x, y, parent = null) {
+            this.x = x;
+            this.y = y;
+            this.parent = parent;
+            this.g = 0; // Costo de inicio
+            this.h = 0; // Heurística
+            this.f = 0; // Costo total
+        }
+
+        // CALCULAR DISTANCIA
+        function HallarDistanciaEuclidiana(x1, y1, x2, y2) {
+            return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        }
+
+        // Función principal para encontrar la ruta usando A*
+        function BuscarRuta(grid, Xinicio, Yinicio, Xfinal, Yfinal) {
+            let ancho = grid.length;
+            let alto = grid[0].length;
+
+            let NodoInicio = new Node(Xinicio, Yinicio);
+            let NodoFinal = new Node(Xfinal, Yfinal);
+
+            let ListaNodosAbiertos = [];
+            let ListaNodosCerrados = [];
+
+            ListaNodosAbiertos.push(NodoInicio);
+
+            while (ListaNodosAbiertos.length > 0) {
+                // Encuentra el nodo de costo menor en la lista abierta
+                let NodoActual = ListaNodosAbiertos[0];
+                for (let i = 1; i < ListaNodosAbiertos.length; i++) {
+                    if (ListaNodosAbiertos[i].f < NodoActual.f) {
+                        NodoActual = ListaNodosAbiertos[i];
+                    }
+                }
+
+                // Movemos el nodo actual a la lista cerrada
+                ListaNodosAbiertos = ListaNodosAbiertos.filter(node => node !== NodoActual);
+                ListaNodosCerrados.push(NodoActual);
+
+                // Si ya acabo de buscar
+                if (NodoActual.x === NodoFinal.x && NodoActual.y === NodoFinal.y) {
+                    let CAMINO = [];
+                    let ACTUAL = NodoActual;
+                    while (ACTUAL !== null) {
+                        CAMINO.push(ACTUAL);
+                        ACTUAL = ACTUAL.parent;
+                    }
+                    CAMINO.reverse();
+                    return CAMINO;
+                }
+
+                // Generamos sucesores
+                let Sucesores = [];
+                for (let i = -1; i <= 1; i++) {
+                    for (let j = -1; j <= 1; j++) {
+                        if ((i === 0 && j === 0) ||
+                            NodoActual.x + i < 0 || NodoActual.x + i >= ancho ||
+                            NodoActual.y + j < 0 || NodoActual.y + j >= alto) {
+                            continue;
+                        }
+
+                        if (grid[NodoActual.x + i][NodoActual.y + j] === 1) {
+                            continue;
+                        }
+
+                        let SUCESOR = new Node(NodoActual.x + i, NodoActual.y + j, NodoActual);
+                        Sucesores.push(SUCESOR);
+                    }
+                }
+
+                Sucesores.forEach(sucesor => {
+                    if (ListaNodosCerrados.some(node => node.x === sucesor.x && node.y === sucesor.y)) {
+                        return;
+                    }
+
+                    let PosibleCamino = NodoActual.g + HallarDistanciaEuclidiana(NodoActual.x, NodoActual.y, sucesor.x, sucesor.y);
+
+                    let NodoExistente = ListaNodosAbiertos.find(node => node.x === sucesor.x && node.y === sucesor.y);
+                    if (NodoExistente && PosibleCamino < NodoExistente.g) {
+                        NodoExistente.g = PosibleCamino;
+                        NodoExistente.parent = NodoActual;
+                    } else if (!NodoExistente) {
+                        sucesor.g = PosibleCamino;
+                        sucesor.h = HallarDistanciaEuclidiana(sucesor.x, sucesor.y, NodoFinal.x, NodoFinal.y);
+                        sucesor.f = sucesor.g + sucesor.h;
+                        ListaNodosAbiertos.push(sucesor);
+                    }
+                });
+            }
+
+            return [];
+        }
+
+        // Función para dibujar la cuadrícula con la ruta
+        function PintarRutaYMapa(grid, ruta) {
+            let gridElement = document.getElementById('grid');
+            for (let y = 0; y < grid[0].length; y++) {
+                for (let x = 0; x < grid.length; x++) {
+                    let cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    if (ruta.some(node => node.x === x && node.y === y)) {
+                        cell.classList.add('path');
+                    } else if (grid[x][y] === 1) {
+                        cell.classList.add('obstacle');
+                    } else {
+                        cell.classList.add('empty');
+                    }
+                    gridElement.appendChild(cell);
+                }
+            }
+        }
+
+
+        
+        let Mapa = [
+            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 1, 0, 0, 1, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 1, 1, 0, 0, 0],
+            [1, 1, 0, 0, 1, 0, 0, 0, 1, 1],
+            [0, 0, 1, 0, 0, 0, 0, 1, 0, 0],
+            [1, 1, 0, 1, 1, 0, 0, 0, 1, 1],
+            [0, 0, 0, 0, 0, 1, 0, 0, 0, 0],
+            [0, 0, 0, 1, 1, 0, 0, 1, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ];
+
+        let ruta = BuscarRuta(Mapa, 0, 6, 9, 2);
+
+
+        PintarRutaYMapa(Mapa, ruta);
+    </script>
+</body>
+</html>
